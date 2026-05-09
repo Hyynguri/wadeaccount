@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css'; 
-import { Home, Calendar as CalendarIcon, PieChart, Settings , X} from 'lucide-react';
+import { Home, Calendar as CalendarIcon, PieChart, Settings , X} 
+from 'lucide-react';
 
 function App() {
   const [date, setDate] = useState(new Date());
@@ -16,7 +17,10 @@ function App() {
   const expenseCategories = ['식비', '교통비', '쇼핑', '문화/여가', '생필품', '기타'];
   const incomeCategories = ['월급', '용돈', '부수입', '금융소득', '기타'];
   // 전체 가계부 내역을 저장하는 배열
-  const [transactions, setTransactions] = useState([]);
+  const [transactions, setTransactions] = useState(() => {
+  const saved = localStorage.getItem("my-account-transactions");
+  return saved ? JSON.parse(saved) : []; // 데이터가 있으면 불러오고, 없으면 빈 배열
+  });
 
 
   const handleAmountChange = (e) => {
@@ -48,23 +52,26 @@ function App() {
 
     // 전체 내역 중, 현재 달력 칸의 날짜와 일치하는 내역만 필터링
     const dayTransactions = transactions.filter(
-      (t) => t.date === date.toLocaleDateString()
+     (t) => t.date === date.toLocaleDateString()
     );
     return (
       <div className="flex flex-col mt-1 space-y-1 w-full text-[11px] px-1">
         {dayTransactions.map((t) => (
-          <div 
+         <div 
             key={t.id} 
             className={`truncate px-1 py-0.5 rounded-sm font-semibold ${
-              t.type === '수입' ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'
+            t.type === '수입' ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'
             }`}
-          >
+          > 
             {t.type === '수입' ? '+' : '-'}{t.amount.toLocaleString()}
           </div>
         ))}
-    </div>
+      </div>
     );
   };
+  useEffect(() => {
+    localStorage.setItem("my-account-transactions", JSON.stringify(transactions));
+  }, [transactions]); // transactions 배열이 변경될 때마다 실행
   return (
     // 1. 전체 화면: 좌/우 가로 배치 (flex-row)
     <div className="flex h-screen bg-gray-900 text-white">
