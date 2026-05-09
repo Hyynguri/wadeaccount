@@ -1,9 +1,9 @@
-/* 전체 배경을 밝게 유지 */
+/* 전체 배경 */
 body {
   background-color: #ffffff;
 }
 
-/* 💡 달력 컨테이너: 높이를 꽉 채우도록 설정 */
+/* 달력 컨테이너 */
 .react-calendar {
   width: 100% !important;
   height: 100% !important;
@@ -20,26 +20,36 @@ body {
   height: 100%;
 }
 
-/* 💡 달력 칸(Tile) 설정: 세로로 길어진 레이아웃에 맞춰 높이 확대 */
+/* 달력 칸(Tile) 디자인 */
 .react-calendar__tile {
-  height: 130px !important;      /* 높이를 130px로 키워 시원하게 배치 */
-  max-height: 130px !important;
+  height: 140px !important;      
+  max-height: 140px !important;
   padding: 0 !important;
   position: relative !important;
   overflow: hidden !important;
-  border: 0.5px solid #f0f0f0 !important; /* 테두리를 아주 연하게 설정 */
+  border: 0.5px solid #f8f8f8 !important; 
 }
 
-/* 날짜 숫자 스타일 */
+/* 날짜 숫자 */
 .react-calendar__tile abbr {
   display: block;
   margin-top: 8px;
-  font-weight: 600;
-  font-size: 0.9rem;
+  margin-left: 8px;
+  font-weight: 700;
+  font-size: 0.95rem;
   color: #333;
+  text-align: left;
 }
 
-/* 토요일, 일요일 색상 (선택사항) */
-.react-calendar__month-view__days__day--neighboringMonth {
-  color: #ccc !important; /* 이전/다음달 날짜 연하게 */
+/* 오늘 날짜 강조 커스텀 */
+.react-calendar__tile--now {
+  background: #fff !important;
+}
+.react-calendar__tile--now abbr {
+  color: #ef4444 !important;
+}
+
+/* 선택된 날짜 타일 배경 초기화 */
+.react-calendar__tile--active {
+  background: #fff !important;
 }
