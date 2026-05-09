@@ -1,55 +1,109 @@
-/* 전체 배경 */
+/* 1. 기본 레이아웃 및 배경 설정 */
 body {
-  background-color: #ffffff;
+  margin: 0;
+  transition: background-color 0.3s, color 0.3s;
 }
 
-/* 달력 컨테이너 */
+/* 2. 달력 전체 컨테이너 고정 */
 .react-calendar {
   width: 100% !important;
   height: 100% !important;
   border: none !important;
   display: flex;
   flex-direction: column;
+  background: white !important; /* 기본 화이트 */
 }
 
-.react-calendar__viewContainer {
-  flex-grow: 1;
+/* 💡 다크 모드일 때 달력 배경을 어둡게 강제 고정 */
+.dark .react-calendar {
+  background: #0f172a !important; /* slate-900 색상 */
+  color: #f1f5f9 !important;
 }
 
-.react-calendar__month-view {
-  height: 100%;
-}
+.react-calendar__viewContainer { flex-grow: 1; }
+.react-calendar__month-view { height: 100%; }
 
-/* 달력 칸(Tile) 디자인 */
+/* 3. 달력 개별 날짜 칸(Tile) 스타일 */
 .react-calendar__tile {
-  height: 140px !important;      
+  height: 140px !important;
   max-height: 140px !important;
   padding: 0 !important;
   position: relative !important;
   overflow: hidden !important;
-  border: 0.5px solid #f8f8f8 !important; 
+  border: 0.5px solid #f1f5f9 !important; /* 라이트모드 테두리 */
+  background: white !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
 }
 
-/* 날짜 숫자 */
+/* 💡 다크 모드일 때 날짜 칸 배경 및 테두리 변경 */
+.dark .react-calendar__tile {
+  background: #0f172a !important;
+  border: 0.5px solid #1e293b !important; /* slate-800 테두리 */
+}
+
+/* 4. 날짜 숫자 스타일 (1, 2, 3...) */
 .react-calendar__tile abbr {
   display: block;
   margin-top: 8px;
   margin-left: 8px;
   font-weight: 700;
   font-size: 0.95rem;
-  color: #333;
+  color: #334155 !important; /* 라이트모드 글자색 */
   text-align: left;
+  width: 100%;
 }
 
-/* 오늘 날짜 강조 커스텀 */
+/* ====================================
+   💡 선택된 날짜의 기본 배경 잔상 완벽 제거
+   ==================================== */
+.react-calendar__tile--active,
+.react-calendar__tile--active:enabled:hover,
+.react-calendar__tile--active:enabled:focus,
+.react-calendar__tile:active {
+  background: #f8fafc !important; /* 라이트 모드 클릭 배경 */
+  color: inherit !important;
+}
+
+.dark .react-calendar__tile--active,
+.dark .react-calendar__tile--active:enabled:hover,
+.dark .react-calendar__tile--active:enabled:focus,
+.dark .react-calendar__tile:active {
+  background: #1e293b !important; /* 다크 모드 클릭 배경 (slate-800) */
+  color: inherit !important;
+}
+
+/* 6. 요일 표시줄 (SUN, MON...) */
+.react-calendar__month-view__weekdays {
+  background: #f8fafc !important;
+  font-weight: bold;
+}
+
+.dark .react-calendar__month-view__weekdays {
+  background: #1e293b !important;
+}
+
+.dark .react-calendar__month-view__weekdays__weekday {
+  color: #94a3b8 !important;
+}
+
+/* 7. 오늘 날짜 및 선택된 날짜 강조 */
 .react-calendar__tile--now {
-  background: #fff !important;
+  background: #f1f5f9 !important;
+}
+.dark .react-calendar__tile--now {
+  background: #1e293b !important;
 }
 .react-calendar__tile--now abbr {
-  color: #ef4444 !important;
+  color: #ef4444 !important; /* 오늘 날짜는 항상 빨간색 */
 }
 
-/* 선택된 날짜 타일 배경 초기화 */
+/* 선택된 날짜의 기본 파란색 배경 제거 */
 .react-calendar__tile--active {
-  background: #fff !important;
+  background: #f8fafc !important;
+}
+.dark .react-calendar__tile--active {
+  background: #1e293b !important;
 }

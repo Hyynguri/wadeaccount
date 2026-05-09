@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* === 여기서부터 가계부 달력 크기 확장 커스텀 === */
 
