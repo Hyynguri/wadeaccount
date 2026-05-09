@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+/* === 여기서부터 가계부 달력 크기 확장 커스텀 === */
+
+.react-calendar {
+  width: 100% !important;
+  height: 100% !important;
+  display: flex;
+  flex-direction: column;
+  font-family: inherit !important;
+  border: none !important;
+}
+
+.react-calendar__navigation {
+  height: 50px;
+  margin-bottom: 10px !important;
+}
+
+/* 요일(SUN, MON...) 헤더 스타일링 */
+.react-calendar__month-view__weekdays {
+  text-align: center;
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding-bottom: 15px;
+  color: #374151; /* 짙은 회색 */
+}
+
+/* 요일 글자 밑에 생기는 기본 점선 밑줄 제거 */
+.react-calendar__month-view__weekdays__weekday abbr {
+  text-decoration: none !important;
+}
+
+/* 첫 번째 요일(SUN) 글자 빨간색으로 */
+.react-calendar__month-view__weekdays__weekday:nth-child(1) {
+  color: #ef4444; 
+}
+
+/* 날짜들이 들어가는 컨테이너 세로 확장 */
+.react-calendar__viewContainer,
+.react-calendar__month-view,
+.react-calendar__month-view > div,
+.react-calendar__month-view > div > div {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 1. 날짜들이 들어가는 컨테이너를 CSS Grid로 변경하여 완벽하게 등분 */
+.react-calendar__month-view__days {
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr) !important; /* 가로를 정확히 7등분 */
+  grid-auto-rows: 1fr !important; /* 세로 길이를 줄 수에 맞춰 똑같이 등분 */
+  flex-grow: 1;
+}
+
+/* 2. 개별 날짜 칸(Tile) 디자인 수정 */
+.react-calendar__tile {
+  width: 100% !important;
+  max-width: 100% !important; /* 기본으로 설정된 max-width 해제 */
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column;
+  justify-content: flex-start !important; /* 숫자를 맨 위로 */
+  align-items: center;
+  padding: 10px 4px !important; 
+  background: white !important; 
+  border: 1px solid #e5e7eb !important; 
+  margin: -1px 0 0 -1px !important; /* 테두리 겹침 방지 */
+  font-size: 0.95rem;
+}
+
+/* 마우스 오버 시 약간의 회색 배경만 추가 */
+.react-calendar__tile:hover {
+  background: #f9fafb !important; 
+}
+
+/* 오늘 날짜 표시 (연한 노란 배경에 굵은 글씨) */
+.react-calendar__tile--now {
+  background: #fffbeb !important; 
+  font-weight: bold;
+}
+
+/* 선택된 날짜 (배경색 대신 테두리만 오렌지색으로 굵게 칠해 내부 글씨 가림 방지) */
+.react-calendar__tile--active {
+  border: 2px solid #f97316 !important; 
+  background: white !important; 
+  color: inherit !important; 
+  z-index: 10; /* 테두리가 잘 보이도록 위로 올림 */
+}
