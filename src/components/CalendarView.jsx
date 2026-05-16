@@ -1,137 +1,356 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import Calendar from 'react-calendar';
-import { Plus, Minus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus } from 'lucide-react';
 
 export default function CalendarView({
   date, setDate, activeStartDate, setActiveStartDate, 
   transactions, handleGoToToday, openModalWithType, openEditModal
 }) {
+  const [isPanelOpen, setIsPanelOpen] = useState(false); 
+  const [isDragging, setIsDragging] = useState(false);
   
-  const [dragStartX, setDragStartX] = useState(0);
-  
-  // 💡 방향만 저장하도록 단순화
-  const [slideDirection, setSlideDirection] = useState('animate-slide-left');
+  const [touchStartX, setTouchStartX] = useState(0);
+  const [touchStartY, setTouchStartY] = useState(0);
+  const [dragOffsetX, setDragOffsetX] = useState(0);
+  const [dragOffsetY, setDragOffsetY] = useState(0);
+  const [dragAxis, setDragAxis] = useState(null); 
+  const [dragTarget, setDragTarget] = useState(null);
 
-  // 💡 월 변경 시 방향 상태를 먼저 바꾸고 날짜를 업데이트합니다.
-  const changeMonth = (offset) => {
-    setSlideDirection(offset > 0 ? 'animate-slide-left' : 'animate-slide-right');
-    setActiveStartDate(prev => new Date(prev.getFullYear(), prev.getMonth() + offset, 1));
-  };
+  const [calAnimTarget, setCalAnimTarget] = useState(null);
+  const [panelAnimTarget, setPanelAnimTarget] = useState(null);
 
-  const handlePointerDown = (e) => setDragStartX(e.clientX || (e.touches && e.touches[0].clientX));
-  
-  const handlePointerUp = (e) => {
-    if (!dragStartX) return;
-    const endX = e.clientX || (e.changedTouches && e.changedTouches[0].clientX);
-    const distance = dragStartX - endX;
-    
-    if (distance > 50) changeMonth(1); 
-    else if (distance < -50) changeMonth(-1); 
-    
-    setDragStartX(0);
-  };
+  const HANDLE_HEIGHT = 24;
+  const isWheelScrolling = useRef(false);
 
-  // 💡 마우스 휠에 스로틀(딜레이) 기능을 넣어 너무 빠르게 여러 달이 넘어가는 것 방지
-  let wheelTimeout;
-  const handleWheel = (e) => {
-    if (wheelTimeout) return;
-    wheelTimeout = setTimeout(() => wheelTimeout = null, 300); // 0.3초 딜레이
-    
-    if (e.deltaY > 30) changeMonth(1);
-    else if (e.deltaY < -30) changeMonth(-1);
-  };
-
-  const renderTileContent = ({ date: tileDate, view }) => {
-    if (view !== 'month') return null;
-    const isSelected = tileDate.toLocaleDateString() === date.toLocaleDateString();
-    const dayTransactions = transactions.filter(t => t.date === tileDate.toLocaleDateString());
-    const totalIncome = dayTransactions.filter(t => t.type === '수입').reduce((s, t) => s + t.amount, 0);
-    const totalExpense = dayTransactions.filter(t => t.type === '지출').reduce((s, t) => s + t.amount, 0);
-
-    return (
-      <div className="w-full h-full relative">
-        {isSelected ? (
-          <div className="absolute inset-0 flex items-center justify-center gap-3 bg-white/90 dark:bg-slate-800/90 backdrop-blur-[2px] z-10 animate-in fade-in duration-200">
-            <button onClick={(e) => openModalWithType(e, '수입')} className="w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform"><Plus size={18} strokeWidth={4} /></button>
-            <button onClick={(e) => openModalWithType(e, '지출')} className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform"><Minus size={18} strokeWidth={4} /></button>
-          </div>
-        ) : (
-          <div className="absolute top-2 right-2 flex flex-col items-end space-y-0.5 pointer-events-none">
-            {totalIncome > 0 && <span className="text-red-500 font-black text-[11px] leading-none">{totalIncome.toLocaleString()}</span>}
-            {totalExpense > 0 && <span className="text-blue-500 font-black text-[11px] leading-none">{totalExpense.toLocaleString()}</span>}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const selectedDateTransactions = transactions.filter(t => t.date === date.toLocaleDateString());
-
-  return (
-    <>
-      <section className="w-[70%] flex flex-col p-6 border-r border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-950 transition-colors">
-        <header className="mb-6 flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">가계부 달력</h2>
-          <button onClick={() => { setSlideDirection('animate-slide-left'); handleGoToToday(); }} 
-            className="px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors shadow-sm">
-            오늘
-          </button>
-        </header>
+  const triggerSlide = (direction, target) => {
+    if (target === 'calendar') {
+      if (calAnimTarget !== null) return;
+      setCalAnimTarget(direction === 1 ? 2 : 0);
+      
+      setTimeout(() => {
+        const currentActive = activeStartDate || new Date(date.getFullYear(), date.getMonth(), 1);
+        setActiveStartDate(new Date(currentActive.getFullYear(), currentActive.getMonth() + direction, 1));
+        setCalAnimTarget(null);
+      }, 300);
+    } else {
+      if (panelAnimTarget !== null) return;
+      setPanelAnimTarget(direction === 1 ? 2 : 0);
+      
+      setTimeout(() => {
+        const newDate = new Date(date);
+        newDate.setDate(newDate.getDate() + direction);
+        setDate(newDate);
         
-        {/* 달력 컨테이너 (스크롤 및 스와이프 감지) */}
-        <div 
-          className="flex-1 rounded-xl overflow-hidden shadow-sm border border-gray-100 dark:border-slate-800 touch-pan-y cursor-grab active:cursor-grabbing flex flex-col bg-white dark:bg-transparent"
-          onPointerDown={handlePointerDown}
-          onPointerUp={handlePointerUp}
-          onPointerLeave={handlePointerUp}
-          onWheel={handleWheel}
-        >
-          {/* 💡 핵심: key={activeStartDate.getTime()} 를 부여해 월이 바뀔 때마다 이 div가 새로 생성되면서 애니메이션이 100% 실행되게 합니다 */}
-          <div key={activeStartDate.getTime()} className={`w-full h-full flex-1 ${slideDirection}`}>
-            <Calendar 
-              onChange={setDate} value={date} activeStartDate={activeStartDate}
-              onActiveStartDateChange={({ action, activeStartDate }) => {
-                if(action === 'next' || action === 'next2') changeMonth(1);
-                else if(action === 'prev' || action === 'prev2') changeMonth(-1);
-                else setActiveStartDate(activeStartDate);
-              }}
-              className="w-full h-full border-none" calendarType="gregory"
-              formatDay={(l, d) => d.toLocaleString("en", {day: "numeric"})}
-              tileContent={renderTileContent}
-              prev2Label={null} next2Label={null}
-              prevLabel={<ChevronLeft className="w-6 h-6 mx-auto text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors" />}
-              nextLabel={<ChevronRight className="w-6 h-6 mx-auto text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors" />}
-              formatMonthYear={(locale, date) => `${date.getFullYear()}년 ${date.getMonth() + 1}월`} 
-            />
-          </div>
-        </div>
-      </section>
+        const currentMonth = activeStartDate ? activeStartDate.getMonth() : new Date().getMonth();
+        if (newDate.getMonth() !== currentMonth) {
+          setActiveStartDate(new Date(newDate.getFullYear(), newDate.getMonth(), 1));
+        }
+        setPanelAnimTarget(null);
+      }, 300);
+    }
+  };
 
-      {/* 우측 상세 내역 섹션 */}
-      <section className="w-[30%] bg-gray-50 dark:bg-slate-900 flex flex-col p-6 overflow-hidden transition-colors">
-        <h3 className="text-xl font-bold mb-8 text-gray-900 dark:text-white border-b border-gray-200 dark:border-slate-800 pb-3">{date.toLocaleDateString()}</h3>
-        <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-          {selectedDateTransactions.map(t => (
-            <div 
-              key={t.id} onClick={() => openEditModal(t)}
-              className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 flex justify-between items-center cursor-pointer hover:border-gray-300 dark:hover:border-slate-500 transition-all hover:shadow-md"
+  const handleTouchStart = (e) => {
+    if (calAnimTarget !== null || panelAnimTarget !== null) return; 
+    setTouchStartX(e.touches[0].clientX);
+    setTouchStartY(e.touches[0].clientY);
+    setIsDragging(true);
+    setDragOffsetX(0);
+    setDragOffsetY(0);
+    setDragAxis(null);
+    setDragTarget(e?.target?.closest?.('.calendar-container') ? 'calendar' : 'panel');
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isDragging) return;
+    const dx = e.touches[0].clientX - touchStartX;
+    const dy = e.touches[0].clientY - touchStartY;
+
+    if (!dragAxis && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
+      setDragAxis(Math.abs(dx) > Math.abs(dy) ? 'x' : 'y');
+    }
+
+    if (dragAxis === 'x') {
+      setDragOffsetX(dx);
+    } else if (dragAxis === 'y') {
+      if (isPanelOpen && e.target.closest('.transaction-list')) {
+        setIsDragging(false); 
+        return;
+      }
+      let delta = dy;
+      if (isPanelOpen) delta = Math.max(0, delta); 
+      else delta = Math.min(0, delta); 
+      setDragOffsetY(delta);
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    if (!isDragging) return;
+    setIsDragging(false);
+
+    if (dragAxis === 'x') {
+      if (dragOffsetX > 50) triggerSlide(-1, dragTarget);
+      else if (dragOffsetX < -50) triggerSlide(1, dragTarget);
+    } else if (dragAxis === 'y') {
+      if (Math.abs(dragOffsetY) < 10) {
+        if (e?.target?.closest?.('.drag-handle')) setIsPanelOpen(!isPanelOpen);
+      } else {
+        if (!isPanelOpen && dragOffsetY < -40) setIsPanelOpen(true);
+        else if (isPanelOpen && dragOffsetY > 40) setIsPanelOpen(false);
+      }
+    }
+    setDragOffsetX(0);
+    setDragOffsetY(0);
+    setDragAxis(null);
+  };
+
+  const handleWheel = (e) => {
+    if (e.target.closest('.transaction-list') && Math.abs(e.deltaY) > Math.abs(e.deltaX)) return;
+    if (isWheelScrolling.current || calAnimTarget !== null || panelAnimTarget !== null) return;
+
+    if (Math.abs(e.deltaX) > 20) {
+      triggerSlide(e.deltaX > 20 ? 1 : -1, 'panel');
+    } else if (Math.abs(e.deltaY) > 20 && e.target.closest('.calendar-container')) {
+      triggerSlide(e.deltaY > 20 ? 1 : -1, 'calendar');
+    }
+    
+    isWheelScrolling.current = true;
+    setTimeout(() => { isWheelScrolling.current = false; }, 500);
+  };
+
+  const getCalendarStyle = () => {
+    if (window.innerWidth >= 768) return {};
+    const wh = window.innerHeight || 800;
+    const closedHeightPx = wh - HANDLE_HEIGHT; 
+    const openHeightPx = wh * 0.53;
+
+    if (!isDragging || dragAxis === 'x') {
+      return { height: isPanelOpen ? `${openHeightPx}px` : `${closedHeightPx}px`, transition: 'height 0.4s cubic-bezier(0.32, 0.72, 0, 1)' };
+    }
+    const baseHeightPx = isPanelOpen ? openHeightPx : closedHeightPx;
+    let dynamicHeightPx = baseHeightPx + dragOffsetY; 
+    dynamicHeightPx = Math.max(openHeightPx, Math.min(closedHeightPx, dynamicHeightPx));
+    return { height: `${dynamicHeightPx}px`, transition: 'none' };
+  };
+
+  const getPanelStyle = () => {
+    if (window.innerWidth >= 768) return {};
+    if (!isDragging || dragAxis === 'x') {
+      return { transform: isPanelOpen ? 'translateY(0)' : `translateY(calc(100% - ${HANDLE_HEIGHT}px))`, transition: 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)' };
+    }
+    const offset = isPanelOpen ? `${dragOffsetY}px` : `calc(100% - ${HANDLE_HEIGHT}px - ${Math.abs(dragOffsetY)}px)`;
+    return { transform: `translateY(${offset})`, transition: 'none' };
+  };
+
+  const getTrackStyle = (type) => {
+    const isCal = type === 'calendar';
+    const animTarget = isCal ? calAnimTarget : panelAnimTarget;
+    const isThisTarget = dragTarget === type;
+
+    if (animTarget !== null) {
+      return { transform: `translateX(-${animTarget * 33.333}%)`, transition: 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)' };
+    }
+    if (isDragging && dragAxis === 'x' && isThisTarget) {
+      return { transform: `translateX(calc(-33.333% + ${dragOffsetX}px))`, transition: 'none' };
+    }
+    return { transform: 'translateX(-33.333%)', transition: 'none' };
+  };
+
+  const currentMonthDate = activeStartDate || new Date(date.getFullYear(), date.getMonth(), 1);
+  const prevMonthDate = new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth() - 1, 1);
+  const nextMonthDate = new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth() + 1, 1);
+
+  const prevDayDate = new Date(date); prevDayDate.setDate(date.getDate() - 1);
+  const nextDayDate = new Date(date); nextDayDate.setDate(date.getDate() + 1);
+
+  const hideCalendarText = window.innerWidth < 768 && (isPanelOpen || (dragAxis === 'y' && dragOffsetY < -5));
+
+  const renderCalendar = (targetDate, keyIndex) => (
+    <div key={keyIndex} className={`w-1/3 h-full flex flex-col shrink-0 ${keyIndex !== 'curr' ? 'pointer-events-none' : ''}`}>
+      <Calendar 
+        onChange={(d) => { setDate(d); if(window.innerWidth < 768) setIsPanelOpen(true); }}
+        value={date}
+        activeStartDate={targetDate}
+        onActiveStartDateChange={({ activeStartDate }) => setActiveStartDate(activeStartDate)} 
+        formatDay={(locale, d) => d.getDate()}
+        calendarType="gregory"
+        maxDetail="month" 
+        minDetail="year"
+        prevLabel={null} nextLabel={null} prev2Label={null} next2Label={null}
+        navigationLabel={({ date: navDate }) => `${navDate.getMonth() + 1}월`}
+        className="w-full h-full border-none react-calendar-mobile-fix"
+        tileContent={({ date: tileDate, view }) => {
+          if (view !== 'month') return null;
+          const dayTx = transactions.filter(t => t.date === tileDate.toLocaleDateString());
+          const income = dayTx.filter(t => t.type === '수입').reduce((s, t) => s + t.amount, 0);
+          const expense = dayTx.filter(t => t.type === '지출').reduce((s, t) => s + t.amount, 0);
+          return (
+            <div className={`flex flex-col items-center font-black leading-tight transition-all duration-300 ease-in-out overflow-hidden
+              ${hideCalendarText ? 'max-h-0 opacity-0 mt-0' : 'max-h-[30px] opacity-100 mt-1 text-[8px] md:text-[10px]'}`}
             >
-              <div>
-                <p className="text-sm font-bold text-gray-800 dark:text-slate-200">{t.description}</p>
-                <p className="text-xs text-gray-400 font-bold">{t.category}</p>
+              {income > 0 && <div className="text-red-500">+{income.toLocaleString()}</div>}
+              {expense > 0 && <div className="text-blue-500">-{expense.toLocaleString()}</div>}
+            </div>
+          );
+        }}
+      />
+    </div>
+  );
+
+  const renderTransactionList = (targetDate, keyIndex) => {
+    const dayTx = transactions.filter(t => t.date === targetDate.toLocaleDateString());
+    return (
+      <div key={keyIndex} className={`w-1/3 h-full shrink-0 flex flex-col overflow-y-auto min-h-0 px-6 pb-28 md:pb-8 pt-2 ${keyIndex !== 'curr' ? 'pointer-events-none' : ''}`}>
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-lg md:text-xl font-extrabold dark:text-white">
+            {targetDate.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })}
+          </h3>
+          <span className="px-3 py-1 bg-white dark:bg-slate-800 rounded-full text-xs font-black text-blue-500 shadow-sm border border-blue-100 dark:border-slate-700">
+            {dayTx.length}건
+          </span>
+        </div>
+        <div className="space-y-3">
+          {dayTx.map(t => (
+            <div key={t.id} onClick={() => openEditModal(t)} 
+                 className="bg-white dark:bg-slate-800 p-4 rounded-3xl flex justify-between items-center shadow-sm border border-transparent active:scale-95 transition-all cursor-pointer">
+              <div className="flex flex-col">
+                <span className="font-bold text-gray-800 dark:text-slate-200 text-sm">{t.description}</span>
+                <span className="text-[10px] text-gray-400 font-bold mt-1 tracking-tight">{t.category}</span>
               </div>
-              <span className={`font-bold ${t.type === '수입' ? 'text-red-500' : 'text-blue-500'}`}>
+              <span className={`font-black text-sm ${t.type === '수입' ? 'text-red-500' : 'text-blue-500'}`}>
                 {t.type === '수입' ? '+' : '-'}{t.amount.toLocaleString()}원
               </span>
             </div>
           ))}
-          {selectedDateTransactions.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-40 opacity-50">
-              <p className="text-center text-gray-400 font-medium">내역이 없습니다.</p>
+          {dayTx.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 opacity-30">
+              <p className="text-sm font-bold text-gray-400">거래 내역이 없습니다.</p>
             </div>
           )}
         </div>
+      </div>
+    );
+  };
+
+  return (
+    <div 
+      className="flex flex-col md:flex-row w-full h-[100dvh] bg-white dark:bg-slate-950 overflow-hidden relative select-none"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
+      onWheel={handleWheel}
+    >
+      <style>{`
+        .react-calendar-mobile-fix {
+          display: flex !important; flex-direction: column !important; height: 100% !important; width: 100% !important;
+        }
+        .react-calendar-mobile-fix .react-calendar__viewContainer {
+          display: flex !important; flex-direction: column !important; flex: 1 1 auto !important; height: 100% !important;
+        }
+        
+        .react-calendar-mobile-fix .react-calendar__month-view,
+        .react-calendar-mobile-fix .react-calendar__year-view,
+        .react-calendar-mobile-fix .react-calendar__month-view > div,
+        .react-calendar-mobile-fix .react-calendar__year-view > div,
+        .react-calendar-mobile-fix .react-calendar__month-view > div > div,
+        .react-calendar-mobile-fix .react-calendar__year-view > div > div {
+          display: flex !important; flex-direction: column !important; flex: 1 1 auto !important; height: 100% !important; width: 100% !important;
+        }
+
+        .react-calendar-mobile-fix .react-calendar__year-view .react-calendar__year-view__months {
+          display: grid !important;
+          flex-direction: row !important;
+          grid-template-columns: repeat(3, 1fr) !important;
+          grid-template-rows: repeat(4, 1fr) !important;
+          height: 100% !important;
+          width: 100% !important;
+          gap: 12px !important;
+          padding: 12px !important;
+        }
+
+        .react-calendar-mobile-fix .react-calendar__year-view .react-calendar__year-view__months .react-calendar__tile {
+          flex: none !important; 
+          max-width: none !important;
+          height: 100% !important;
+          min-height: 0 !important;
+          max-height: none !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          font-size: 1.1rem !important;
+          font-weight: 800 !important;
+          border-radius: 16px !important;
+          background: #f8fafc !important;
+        }
+        .dark .react-calendar-mobile-fix .react-calendar__year-view .react-calendar__year-view__months .react-calendar__tile { 
+          background: #1e293b !important; color: white !important; 
+        }
+      `}</style>
+      
+      {/* 📅 달력 섹션 */}
+      <section 
+        className={`w-full md:flex-1 pt-4 px-4 flex flex-col shrink-0 relative z-20 transition-all duration-300
+          ${window.innerWidth < 768 ? (isPanelOpen ? 'pb-4' : 'pb-16') : 'pb-8'}
+        `}
+        style={getCalendarStyle()} 
+      >
+        <header className="py-2 mb-1 px-2 flex justify-between items-center shrink-0">
+          <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">가계부 달력</h2>
+          
+          {/* 💡 속이 비어있고, 테두리만 있는 깔끔한 둥근 모서리 디자인으로 변경 */}
+          <button 
+            onClick={handleGoToToday} 
+            className="w-10 h-10 flex items-center justify-center bg-transparent border-2 border-gray-200 dark:border-slate-700 rounded-[12px] active:scale-95 transition-all z-10 relative text-gray-800 dark:text-white hover:border-blue-500 hover:text-blue-600 dark:hover:border-blue-400 dark:hover:text-blue-400"
+            title="오늘 날짜로 이동"
+          >
+            {/* 자바스크립트로 항상 실제 '오늘'의 날짜(일)를 계산해서 렌더링합니다 */}
+            <span className="font-extrabold text-lg leading-none mt-[2px]">
+              {new Date().getDate()}
+            </span>
+          </button>
+
+        </header>
+        
+        <div className="calendar-container flex-1 w-full rounded-3xl border border-gray-100 dark:border-slate-800 shadow-xl overflow-hidden bg-white dark:bg-slate-900 min-h-0 relative z-0">
+          <div className="w-[300%] h-full flex flex-nowrap will-change-transform" style={getTrackStyle('calendar')}>
+            {renderCalendar(prevMonthDate, 'prev')}
+            {renderCalendar(currentMonthDate, 'curr')}
+            {renderCalendar(nextMonthDate, 'next')}
+          </div>
+        </div>
       </section>
-    </>
+
+      {/* 🧾 하단 상세 내역 패널 */}
+      <section 
+        className="flex-1 w-full bg-gray-50 dark:bg-slate-900 z-30 flex flex-col min-h-0 md:static md:w-[420px] md:h-full md:border-l md:border-gray-200 md:flex-none rounded-t-[40px] shadow-[0_-15px_30px_rgba(0,0,0,0.1)]"
+        style={getPanelStyle()}
+      >
+        <div className="drag-handle w-full h-6 shrink-0 cursor-row-resize md:hidden touch-none relative z-10" />
+
+        <div className={`transaction-list flex-1 w-full overflow-hidden min-h-0 relative z-10 ${!isPanelOpen && dragAxis !== 'y' && window.innerWidth < 768 ? 'hidden' : 'block'}`}>
+          <div className="w-[300%] h-full flex flex-nowrap will-change-transform" style={getTrackStyle('panel')}>
+            {renderTransactionList(prevDayDate, 'prev')}
+            {renderTransactionList(date, 'curr')}
+            {renderTransactionList(nextDayDate, 'next')}
+          </div>
+        </div>
+
+        <div className="hidden md:block p-6 bg-white dark:bg-slate-900 border-t dark:border-slate-800">
+           <button onClick={(e) => openModalWithType(e, '지출')} className="w-full py-4 bg-blue-600 text-white rounded-3xl font-black hover:bg-blue-700 transition-all shadow-xl">
+             내역 추가
+           </button>
+        </div>
+      </section>
+
+      {/* ➕ 플로팅 버튼 */}
+      <button 
+        onClick={(e) => openModalWithType(e, '지출')}
+        className={`fixed right-6 w-14 h-14 bg-blue-600 text-white rounded-full flex md:hidden items-center justify-center shadow-2xl z-40 transition-all duration-300 transform
+          ${!isPanelOpen ? 'bottom-[-100px] opacity-0 scale-50' : 'bottom-24 opacity-100 scale-100'}`}
+      >
+        <Plus size={28} strokeWidth={4} />
+      </button>
+    </div>
   );
 }

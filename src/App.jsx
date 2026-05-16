@@ -5,58 +5,44 @@ import Dashboard from './components/Dashboard';
 import CalendarView from './components/CalendarView';
 import TransactionModal from './components/TransactionModal';
 import SettingsView from './components/SettingsView';
-import Login from './components/Login'; // 💡 로그인 컴포넌트 추가
+import Login from './components/Login';
+import { CalendarDays, PieChart, Settings } from 'lucide-react'; // 💡 하단 탭용 아이콘 추가
 import 'react-calendar/dist/Calendar.css';
 import './App.css';
 
 export default function App() {
-  // 1. 인증 및 세션 상태
   const [session, setSession] = useState(null);
-
-  // 2. UI 및 환경 상태
   const [view, setView] = useState('calendar');
   const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem('wade-dark-mode') === 'true';
   });
 
-  // 3. 데이터 및 모달 상태
   const [transactions, setTransactions] = useState([]);
   const [date, setDate] = useState(new Date());
   const [activeStartDate, setActiveStartDate] = useState(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
   
-  // 4. 입력 필드 상태
   const [type, setType] = useState('지출');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('식비');
   const [description, setDescription] = useState('');
 
-  // 💡 [Auth] 세션 감시 및 유지
-useEffect(() => {
-    console.log("👀 앱 실행됨: 세션 확인 시작...");
-    
-    // 현재 세션 확인
+  useEffect(() => {
     supabase.auth.getSession().then(({ data: { session }, error }) => {
-      console.log("초기 세션 상태:", session);
       if (error) console.error("세션 가져오기 에러:", error);
       setSession(session);
     });
 
-    // 로그인/로그아웃 상태 변경 감지
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("🔥 인증 이벤트 발생:", event, session);
       setSession(session);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  // 💡 [Data] 로그인 시 데이터 불러오기
   useEffect(() => {
-    if (session) {
-      fetchTransactions();
-    }
+    if (session) fetchTransactions();
   }, [session]);
 
   const fetchTransactions = async () => {
@@ -65,20 +51,13 @@ useEffect(() => {
       .select('*')
       .order('id', { ascending: true });
     
-    if (error) {
-      console.error('데이터 로드 실패:', error);
-    } else {
-      setTransactions(data || []);
-    }
+    if (error) console.error('데이터 로드 실패:', error);
+    else setTransactions(data || []);
   };
 
-  // 💡 [UI] 다크 모드 적용
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    if (darkMode) document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
     localStorage.setItem('wade-dark-mode', darkMode);
   }, [darkMode]);
 
@@ -87,7 +66,6 @@ useEffect(() => {
     setAmount(value ? Number(value).toLocaleString("ko-KR") : "");
   };
 
-  // 💡 [CRUD] 저장 및 수정 (keepOpen 매개변수 추가)
   const handleSaveTransaction = async (keepOpen = false) => {
     const numericAmount = Number(amount.replace(/,/g, ''));
     if (!numericAmount) return alert("금액을 입력하세요.");
@@ -98,34 +76,25 @@ useEffect(() => {
       category,
       description: description || '내역 없음',
       amount: numericAmount,
-      user_id: session.user.id // 💡 로그인 유저 ID 저장 (RLS용)
+      user_id: session.user.id
     };
 
     if (editingTransaction) {
-      // 수정 (Update)
       const { data, error } = await supabase
         .from('transactions')
         .update(transactionData)
         .eq('id', editingTransaction.id)
         .select();
-
-      if (!error && data) {
-        setTransactions(transactions.map(t => t.id === editingTransaction.id ? data[0] : t));
-      }
+      if (!error && data) setTransactions(transactions.map(t => t.id === editingTransaction.id ? data[0] : t));
     } else {
-      // 신규 추가 (Create)
       const { data, error } = await supabase
         .from('transactions')
         .insert([transactionData])
         .select();
-
-      if (!error && data) {
-        setTransactions([...transactions, data[0]]);
-      }
+      if (!error && data) setTransactions([...transactions, data[0]]);
     }
 
     if (keepOpen) {
-      // 💡 "저장 후 계속" 일 때: 금액과 내용만 초기화
       setAmount('');
       setDescription('');
     } else {
@@ -135,23 +104,14 @@ useEffect(() => {
 
   const handleDeleteTransaction = async () => {
     if (!editingTransaction) return;
-
-    const { error } = await supabase
-      .from('transactions')
-      .delete()
-      .eq('id', editingTransaction.id);
-
+    const { error } = await supabase.from('transactions').delete().eq('id', editingTransaction.id);
     if (!error) {
       setTransactions(transactions.filter(t => t.id !== editingTransaction.id));
       closeModal();
-    } else {
-      alert("삭제 중 오류가 발생했습니다.");
-    }
+    } else alert("삭제 중 오류가 발생했습니다.");
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-  };
+  const handleLogout = async () => await supabase.auth.signOut();
 
   const closeModal = () => {
     setIsModalOpen(false);
@@ -160,23 +120,24 @@ useEffect(() => {
     setDescription('');
   };
 
-// 🚪 [Gatekeeper] 로그인이 안 되어 있으면 로그인 화면만 보여줌
-if (!session) {
-  return (
-    // 💡 화면 전체(h-screen, w-full)를 하얀색(bg-white)으로 꽉 채우고 로그인 창을 띄웁니다!
-    <div className="flex h-screen w-full items-center justify-center bg-white text-gray-800">
-      <Login />
-    </div>
-  );
-}
+  if (!session) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-white text-gray-800">
+        <Login />
+      </div>
+    );
+  }
 
   return (
-    <div className={`flex h-screen font-sans relative transition-colors ${darkMode ? 'dark bg-slate-950 text-white' : 'bg-white text-gray-800'}`}>
+    // 💡 모바일에서는 하단 탭 공간(pb-16)을 확보하고, 데스크탑에서는 0(md:pb-0)으로 설정
+    <div className={`flex h-screen font-sans relative transition-colors overflow-hidden pb-16 md:pb-0 ${darkMode ? 'dark bg-slate-950 text-white' : 'bg-white text-gray-800'}`}>
       
-      {/* 로그아웃 기능을 사이드바 등에 전달할 수 있음 */}
-      <Sidebar view={view} setView={setView} handleLogout={handleLogout} />
+      {/* 💡 데스크탑용 사이드바 (모바일에서는 숨김: hidden md:flex) */}
+      <div className="hidden md:flex md:shrink-0">
+        <Sidebar view={view} setView={setView} handleLogout={handleLogout} />
+      </div>
 
-      <main className="flex-1 flex overflow-hidden">
+      <main className="flex-1 w-full h-full flex overflow-hidden">
         {view === 'calendar' && (
           <CalendarView 
             date={date} setDate={setDate}
@@ -184,7 +145,7 @@ if (!session) {
             transactions={transactions}
             handleGoToToday={() => { setDate(new Date()); setActiveStartDate(new Date()); }}
             openModalWithType={(e, t) => { 
-              e.stopPropagation(); 
+              if(e) e.stopPropagation(); 
               setType(t); 
               setCategory(t === '수입' ? '월급' : '식비'); 
               setIsModalOpen(true); 
@@ -203,12 +164,29 @@ if (!session) {
         {view === 'settings' && <SettingsView darkMode={darkMode} setDarkMode={setDarkMode} />}
       </main>
 
+      {/* 💡 모바일용 하단 탭 (데스크탑에서는 숨김: md:hidden) */}
+      <div className="fixed bottom-0 left-0 w-full h-16 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 flex justify-around items-center md:hidden z-50 transition-colors">
+        <button onClick={() => setView('calendar')} className={`flex flex-col items-center flex-1 ${view === 'calendar' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}>
+          <CalendarDays className="w-6 h-6 mb-1" />
+          <span className="text-[10px] font-medium">달력</span>
+        </button>
+        <button onClick={() => setView('dashboard')} className={`flex flex-col items-center flex-1 ${view === 'dashboard' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}>
+          <PieChart className="w-6 h-6 mb-1" />
+          <span className="text-[10px] font-medium">통계</span>
+        </button>
+        <button onClick={() => setView('settings')} className={`flex flex-col items-center flex-1 ${view === 'settings' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}>
+          <Settings className="w-6 h-6 mb-1" />
+          <span className="text-[10px] font-medium">설정</span>
+        </button>
+      </div>
+
       {isModalOpen && (
         <TransactionModal 
           closeModal={closeModal} 
           isEdit={!!editingTransaction}
           handleDelete={handleDeleteTransaction}
           type={type} 
+          setType={setType}
           amount={amount} 
           handleAmountChange={handleAmountChange}
           category={category} 
