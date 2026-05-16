@@ -160,10 +160,15 @@ useEffect(() => {
     setDescription('');
   };
 
-  // 🚪 [Gatekeeper] 로그인이 안 되어 있으면 로그인 화면만 보여줌
-  if (!session) {
-    return <Login />;
-  }
+// 🚪 [Gatekeeper] 로그인이 안 되어 있으면 로그인 화면만 보여줌
+if (!session) {
+  return (
+    // 💡 화면 전체(h-screen, w-full)를 하얀색(bg-white)으로 꽉 채우고 로그인 창을 띄웁니다!
+    <div className="flex h-screen w-full items-center justify-center bg-white text-gray-800">
+      <Login />
+    </div>
+  );
+}
 
   return (
     <div className={`flex h-screen font-sans relative transition-colors ${darkMode ? 'dark bg-slate-950 text-white' : 'bg-white text-gray-800'}`}>
