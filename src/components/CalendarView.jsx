@@ -185,7 +185,7 @@ export default function CalendarView({
           const income = dayTx.filter(t => t.type === '수입').reduce((s, t) => s + t.amount, 0);
           const expense = dayTx.filter(t => t.type === '지출').reduce((s, t) => s + t.amount, 0);
           return (
-            <div className={`flex flex-col items-center font-black leading-tight transition-all duration-300 ease-in-out overflow-hidden
+            <div className={`flex flex-col items-end w-full font-black leading-tight transition-all duration-300 ease-in-out overflow-hidden pr-1
               ${hideCalendarText ? 'max-h-0 opacity-0 mt-0' : 'max-h-[30px] opacity-100 mt-1 text-[8px] md:text-[10px]'}`}
             >
               {income > 0 && <div className="text-red-500">+{income.toLocaleString()}</div>}
@@ -200,7 +200,7 @@ export default function CalendarView({
   const renderTransactionList = (targetDate, keyIndex) => {
     const dayTx = transactions.filter(t => t.date === targetDate.toLocaleDateString());
     return (
-      <div key={keyIndex} className={`w-1/3 h-full shrink-0 flex flex-col overflow-y-auto min-h-0 px-6 pb-28 md:pb-8 pt-2 ${keyIndex !== 'curr' ? 'pointer-events-none' : ''}`}>
+      <div key={keyIndex} className={`w-1/3 h-full shrink-0 flex flex-col overflow-y-auto min-h-0 px-6 pb-28 md:pb-8 pt-2 md:pt-8 ${keyIndex !== 'curr' ? 'pointer-events-none' : ''}`}>
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-lg md:text-xl font-extrabold dark:text-white">
             {targetDate.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })}
@@ -241,6 +241,7 @@ export default function CalendarView({
       onTouchCancel={handleTouchEnd}
       onWheel={handleWheel}
     >
+      {/* 💡 라이브러리 하이라이트 CSS 스타일 전면 개편 */}
       <style>{`
         .react-calendar-mobile-fix {
           display: flex !important; flex-direction: column !important; height: 100% !important; width: 100% !important;
@@ -258,9 +259,91 @@ export default function CalendarView({
           display: flex !important; flex-direction: column !important; flex: 1 1 auto !important; height: 100% !important; width: 100% !important;
         }
 
+        /* 📅 월간 뷰 날짜 타일 공통 레이아웃 설정 */
+        .react-calendar-mobile-fix .react-calendar__month-view__days__day {
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: flex-end !important;
+          justify-content: flex-start !important;
+          padding: 8px 12px 4px 8px !important;
+          background: transparent !important;
+          border-radius: 16px !important;
+          transition: all 0.2s ease !important;
+          color: #1e293b !important;
+          border: 2px solid transparent !important; /* 기본 테두리 투명하게 확보 */
+        }
+        .dark .react-calendar-mobile-fix .react-calendar__month-view__days__day {
+          color: #f1f5f9 !important;
+        }
+
+        /* 다른 달의 날짜 투명도 조절 */
+        .react-calendar-mobile-fix .react-calendar__month-view__days__day--neighboringMonth {
+          opacity: 0.25 !important;
+        }
+
+        /* 날짜 기본 밑줄 해제 */
+        .react-calendar-mobile-fix .react-calendar__month-view__days__day abbr {
+          text-decoration: none !important;
+          font-weight: 700 !important;
+        }
+
+        /* 🚫 [핵심 버그 픽스] 터치 후 남는 포커스/호버 좀비 잔상 완벽 차단 */
+        .react-calendar-mobile-fix .react-calendar__tile:enabled:hover,
+        .react-calendar-mobile-fix .react-calendar__tile:enabled:focus,
+        .react-calendar-mobile-fix .react-calendar__tile:active,
+        .react-calendar-mobile-fix .react-calendar__tile:focus,
+        .react-calendar-mobile-fix .react-calendar__tile:hover {
+          background: transparent !important;
+        }
+
+        /* 📍 1. 오늘 날짜 스타일: 꽉 찬 배경 제거 ➡️ '상단 오늘 버튼'과 동일한 파란색 Squircle 테두리로 교체 */
+        .react-calendar-mobile-fix .react-calendar__tile--now {
+          background: transparent !important;
+          border: 2px solid #3b82f6 !important;
+          color: #3b82f6 !important;
+        }
+        .dark .react-calendar-mobile-fix .react-calendar__tile--now {
+          border-color: #60a5fa !important;
+          color: #60a5fa !important;
+        }
+        
+        /* 오늘 날짜 타일의 포커스 잔상도 강제 차단 */
+        .react-calendar-mobile-fix .react-calendar__tile--now:enabled:hover,
+        .react-calendar-mobile-fix .react-calendar__tile--now:enabled:focus,
+        .react-calendar-mobile-fix .react-calendar__tile--now:hover,
+        .react-calendar-mobile-fix .react-calendar__tile--now:focus {
+          background: transparent !important;
+        }
+
+        /* 📍 2. 현재 선택된 날짜(Active) 하이라이트: 오직 이것만 배경색을 가질 수 있음 */
+        .react-calendar-mobile-fix .react-calendar__tile--active,
+        .react-calendar-mobile-fix .react-calendar__tile--active:enabled:hover,
+        .react-calendar-mobile-fix .react-calendar__tile--active:enabled:focus,
+        .react-calendar-mobile-fix .react-calendar__tile--active:hover,
+        .react-calendar-mobile-fix .react-calendar__tile--active:focus {
+          background: #3b82f6 !important;
+          color: white !important;
+          box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3) !important;
+          border-color: transparent !important;
+        }
+        .dark .react-calendar-mobile-fix .react-calendar__tile--active,
+        .dark .react-calendar-mobile-fix .react-calendar__tile--active:enabled:hover,
+        .dark .react-calendar-mobile-fix .react-calendar__tile--active:enabled:focus,
+        .dark .react-calendar-mobile-fix .react-calendar__tile--active:hover,
+        .dark .react-calendar-mobile-fix .react-calendar__tile--active:focus {
+          background: #2563eb !important;
+          color: white !important;
+          box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4) !important;
+          border-color: transparent !important;
+        }
+        
+        .react-calendar-mobile-fix .react-calendar__tile--active abbr {
+          color: white !important;
+        }
+
+        /* 3x4 연도별 선택창 레이아웃 */
         .react-calendar-mobile-fix .react-calendar__year-view .react-calendar__year-view__months {
           display: grid !important;
-          flex-direction: row !important;
           grid-template-columns: repeat(3, 1fr) !important;
           grid-template-rows: repeat(4, 1fr) !important;
           height: 100% !important;
@@ -273,8 +356,6 @@ export default function CalendarView({
           flex: none !important; 
           max-width: none !important;
           height: 100% !important;
-          min-height: 0 !important;
-          max-height: none !important;
           display: flex !important;
           align-items: center !important;
           justify-content: center !important;
@@ -282,6 +363,7 @@ export default function CalendarView({
           font-weight: 800 !important;
           border-radius: 16px !important;
           background: #f8fafc !important;
+          border: none !important;
         }
         .dark .react-calendar-mobile-fix .react-calendar__year-view .react-calendar__year-view__months .react-calendar__tile { 
           background: #1e293b !important; color: white !important; 
@@ -298,18 +380,15 @@ export default function CalendarView({
         <header className="py-2 mb-1 px-2 flex justify-between items-center shrink-0">
           <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">가계부 달력</h2>
           
-          {/* 💡 속이 비어있고, 테두리만 있는 깔끔한 둥근 모서리 디자인으로 변경 */}
           <button 
             onClick={handleGoToToday} 
             className="w-10 h-10 flex items-center justify-center bg-transparent border-2 border-gray-200 dark:border-slate-700 rounded-[12px] active:scale-95 transition-all z-10 relative text-gray-800 dark:text-white hover:border-blue-500 hover:text-blue-600 dark:hover:border-blue-400 dark:hover:text-blue-400"
             title="오늘 날짜로 이동"
           >
-            {/* 자바스크립트로 항상 실제 '오늘'의 날짜(일)를 계산해서 렌더링합니다 */}
             <span className="font-extrabold text-lg leading-none mt-[2px]">
               {new Date().getDate()}
             </span>
           </button>
-
         </header>
         
         <div className="calendar-container flex-1 w-full rounded-3xl border border-gray-100 dark:border-slate-800 shadow-xl overflow-hidden bg-white dark:bg-slate-900 min-h-0 relative z-0">
@@ -321,9 +400,9 @@ export default function CalendarView({
         </div>
       </section>
 
-      {/* 🧾 하단 상세 내역 패널 */}
+      {/* 🧾 우측 상세 내역 패널 */}
       <section 
-        className="flex-1 w-full bg-gray-50 dark:bg-slate-900 z-30 flex flex-col min-h-0 md:static md:w-[420px] md:h-full md:border-l md:border-gray-200 md:flex-none rounded-t-[40px] shadow-[0_-15px_30px_rgba(0,0,0,0.1)]"
+        className="flex-1 w-full bg-gray-50 dark:bg-slate-900 z-30 flex flex-col min-h-0 md:static md:w-[420px] md:h-full md:border-l md:border-gray-200 dark:md:border-slate-800 md:flex-none rounded-t-[40px] md:rounded-none shadow-[0_-15px_30px_rgba(0,0,0,0.1)] md:shadow-none"
         style={getPanelStyle()}
       >
         <div className="drag-handle w-full h-6 shrink-0 cursor-row-resize md:hidden touch-none relative z-10" />
